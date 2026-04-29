@@ -1,0 +1,8 @@
+
+.env
+api/certs/
+api/hev_metrics.db
+system_performance.log
+api/intrusion_attempts.log
+__pycache__/
+.pytest_cache/
