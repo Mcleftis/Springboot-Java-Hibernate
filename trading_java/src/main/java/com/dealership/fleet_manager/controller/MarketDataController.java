@@ -29,14 +29,8 @@ public class MarketDataController {
     public ResponseEntity<List<MarketData>> getData(@PathVariable String symbol) {
         return ResponseEntity.ok(marketDataService.getBySymbol(symbol));
     }
-    @PostMapping("/analyze/{symbol}")
-    public ResponseEntity<AnalysisResult> analyze(@PathVariable String symbol) {
-        return ResponseEntity.ok(analysisService.analyze(symbol));
-    }
-    @GetMapping("/analysis/{symbol}")
-    public ResponseEntity<AnalysisResult> getAnalysis(@PathVariable String symbol) {
-        return analysisService.getLatestAnalysis(symbol).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
-    }
+
+    
     @PostMapping("/wyckoff-full/{symbol}")
     public ResponseEntity<String> wyckoffFull(@PathVariable String symbol) {
         try {
@@ -46,7 +40,7 @@ public class MarketDataController {
             headers.setContentType(MediaType.APPLICATION_JSON);
             Map<String, Object> body = Map.of("symbol", symbol, "prices", prices);
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-            ResponseEntity<String> response = restTemplate.postForEntity("http://fleet-python:8000/wyckoff-full", request, String.class);
+            ResponseEntity<String> response = restTemplate.postForEntity("http://fleet-python:8002/wyckoff-full", request, String.class);
             return ResponseEntity.ok(response.getBody());
         } catch (Exception e) { return ResponseEntity.badRequest().body("Error: " + e.getMessage()); }
     }
