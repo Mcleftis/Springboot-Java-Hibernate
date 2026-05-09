@@ -1,59 +1,94 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { MarketDataService, MarketData } from '../../services/market-data.service';
 import Chart from 'chart.js/auto';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
+  imports: [CommonModule],
   templateUrl: './dashboard.component.html'
 })
 export class DashboardComponent implements OnInit {
   public chart: any;
+  public analysis: any = null;
+  public lstm: any = null;
 
-  constructor(private ds: MarketDataService) {}
+  constructor(
+    private ds: MarketDataService,
+    private cdr: ChangeDetectorRef // <--- ΠΡΟΣΘΗΚΗ 1: Ο "ξυπνητήρης" της Angular
+  ) {}
 
   ngOnInit(): void {
-    this.ds.getData().subscribe(data => {
-      this.createChart(data);
+    // 1. Ζητάμε τα δεδομένα του γραφήματος
+    this.ds.getData().subscribe({
+      next: (data) => {
+        this.createChart(data);
+        
+        // 2. Ζητάμε το AI
+        this.ds.getAnalysis('GOLD').subscribe({
+          next: (res) => {
+            const parsed = typeof res === 'string' ? JSON.parse(res) : res;
+            this.analysis = parsed?.quant ?? null;
+            this.lstm = parsed?.lstm ?? null;
+            
+            // 3. Βάζουμε τις προβλέψεις
+            if (this.lstm && this.lstm.predictions) {
+              this.addPredictions(this.lstm.predictions);
+            }
+
+            // <--- ΠΡΟΣΘΗΚΗ 2: ΤΟ ΜΑΓΙΚΟ ΚΟΛΠΟ --->
+            // Λέμε στην Angular: "Ήρθαν νέα δεδομένα, κάνε ΑΜΕΣΩΣ refresh το HTML!"
+            this.cdr.detectChanges(); 
+          },
+          error: (err) => console.error("Sfalma AI:", err)
+        });
+      },
+      error: (err) => console.error("Sfalma Vashs:", err)
     });
   }
 
   createChart(data: MarketData[]) {
-    // Αν υπάρχει ήδη γράφημα, το καταστρέφουμε για να μη γίνει διπλό
-    if (this.chart) {
-      this.chart.destroy();
-    }
-
-    // Κόβουμε τα δεδομένα. Παίρνουμε μόνο τις τελευταίες 500 μέρες.
-    // Αλλιώς 8000+ σημεία θα "γονατίσουν" το rendering του Chrome.
-    const recentData = data.slice(-500);
-
-    // Διαβάζουμε τις νέες σωστές μεταβλητές (recordDate και close)
-    const labels = recentData.map(item => item.recordDate);
-    const prices = recentData.map(item => item.close);
-
+    if (this.chart) this.chart.destroy();
+    const labels = data.map(item => item.recordDate);
+    const prices = data.map(item => item.close);
+    
     this.chart = new Chart('marketChart', {
       type: 'line',
       data: {
         labels: labels,
         datasets: [{
-          label: 'Gold Price (Last 500 Days)',
+          label: 'Gold Price',
           data: prices,
-          borderColor: '#2ecc71',
-          backgroundColor: 'rgba(46, 204, 113, 0.1)',
+          borderColor: 'blue',
           borderWidth: 2,
-          fill: true,
-          pointRadius: 0, // Κρύβει τις τελείες για να φαίνεται σαν καθαρή γραμμή
-          tension: 0.1
+          fill: false,
+          pointRadius: 0
         }]
       },
-      options: {
-        responsive: true,
-        animation: false, // Απενεργοποιούμε το animation για instant load
-        plugins: {
-          legend: { display: true }
-        }
-      }
+      options: { responsive: true, animation: false }
     });
+  }
+
+  addPredictions(preds: number[]) {
+    if(!this.chart || !preds) return;
+    
+    const futureLabels = preds.map((_, i) => 'T+'+(i+1));
+    const nulls = Array(this.chart.data.labels.length - 1).fill(null);
+    const lastPrice = this.chart.data.datasets[0].data[this.chart.data.datasets[0].data.length - 1];
+    
+    this.chart.data.labels.push(...futureLabels);
+    this.chart.data.datasets[0].data.push(...Array(preds.length).fill(null));
+    
+    this.chart.data.datasets.push({
+        label: 'LSTM Prediction',
+        data: [...nulls, lastPrice, ...preds],
+        borderColor: 'purple',
+        borderWidth: 2,
+        borderDash: [5, 5],
+        fill: false,
+        pointRadius: 3
+    });
+    this.chart.update();
   }
 }
