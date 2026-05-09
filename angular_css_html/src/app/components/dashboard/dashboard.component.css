@@ -1,0 +1,61 @@
+﻿.dashboard-container {
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: #f4f6f9;
+  color: #333;
+}
+header {
+  background: #0f2027;
+  background: linear-gradient(to right, #203a43, #0f2027);
+  color: white;
+  padding: 25px;
+  border-radius: 8px;
+  margin-bottom: 25px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+header h1 { margin: 0; font-size: 26px; font-weight: 600; letter-spacing: 1px; }
+header p { margin: 5px 0 0; opacity: 0.7; font-size: 14px; }
+.data-section {
+  background: white;
+  padding: 25px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.data-section h2 {
+  margin-top: 0;
+  border-bottom: 2px solid #eee;
+  padding-bottom: 10px;
+  color: #2c3e50;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+th, td {
+  padding: 15px;
+  text-align: left;
+  border-bottom: 1px solid #eaebec;
+}
+th { 
+  background-color: #f8f9fa; 
+  font-weight: 600; 
+  color: #495057;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+tr:hover { background-color: #f1f3f5; }
+.bullish { color: #28a745; font-weight: 700; background: #e6f4ea; padding: 4px 8px; border-radius: 4px;}
+.bearish { color: #dc3545; font-weight: 700; background: #fce8e6; padding: 4px 8px; border-radius: 4px;}
+.loading { color: #6c757d; font-style: italic; text-align: center; padding: 20px; }
+.error-banner {
+  background-color: #f8d7da;
+  color: #721c24;
+  padding: 15px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  border: 1px solid #f5c6cb;
+  font-weight: 500;
+}

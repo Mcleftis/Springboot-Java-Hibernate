@@ -1,0 +1,30 @@
+﻿apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fleet-python
+spec:
+  selector:
+    matchLabels:
+      app: fleet-python
+  template:
+    metadata:
+      labels:
+        app: fleet-python
+    spec:
+      containers:
+      - name: fleet-python
+        image: fleet-python:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fleet-python
+spec:
+  selector:
+    app: fleet-python
+  ports:
+  - port: 8000
+    targetPort: 8000

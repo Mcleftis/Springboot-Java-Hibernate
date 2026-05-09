@@ -1,8 +1,44 @@
+# --- Windows & System Files ---
+*.exe
+*.lnk
+*.msi
+*.msp
+*.com
+*.bin
+Thumbs.db
+.DS_Store
 
-.env
-api/certs/
-api/hev_metrics.db
-system_performance.log
-api/intrusion_attempts.log
+# --- Java / Spring Boot ---
+target/
+*.jar
+*.war
+.mvn/wrapper/maven-wrapper.jar
+
+# --- Angular / Node ---
+node_modules/
+dist/
+.angular/
+
+# --- Python ---
 __pycache__/
-.pytest_cache/
+*.py[cod]
+.venv/
+venv/
+env/
+.env
+
+# --- IDEs / OS ---
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+Thumbs.db
+
+# --- Databases / AI ---
+chroma_db/
+*.csv
+*output.txt
