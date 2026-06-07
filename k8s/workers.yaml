@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: quant-ai-workers
+  namespace: quant-trading
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: quant-ai-workers
+  template:
+    metadata:
+      labels:
+        app: quant-ai-workers
+    spec:
+      containers:
+        - name: quant-ai-workers
+          image: quant-ai-workers:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: fastapi
+              containerPort: 8000
+            - name: image-worker
+              containerPort: 8001
+            - name: rag-worker
+              containerPort: 8002
+            - name: quant-worker
+              containerPort: 8003
+            - name: lstm-worker
+              containerPort: 8004
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "2000m"
+              memory: "4Gi"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 40
+            periodSeconds: 15
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: quant-ai-workers
+  namespace: quant-trading
+spec:
+  selector:
+    app: quant-ai-workers
+  ports:
+    - name: fastapi
+      port: 8000
+      targetPort: 8000
+    - name: image-worker
+      port: 8001
+      targetPort: 8001
+    - name: rag-worker
+      port: 8002
+      targetPort: 8002
+    - name: quant-worker
+      port: 8003
+      targetPort: 8003
+    - name: lstm-worker
+      port: 8004
+      targetPort: 8004
