@@ -1,6 +1,7 @@
-import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+﻿import { Injectable } from '@angular/core';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { Observable, throwError } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 
 export interface MarketData {
   id: number;
@@ -9,19 +10,21 @@ export interface MarketData {
 }
 
 export interface QuantAnalysis {
-  symbol: string;
-  condition: string;
-  rsi: number;
-  supportZone: number;
-  resistanceZone: number;
-  riskLevel: number;
-  recommendation: string;
+  error?: string;
+  symbol?: string;
+  condition?: string;
+  rsi?: number;
+  supportZone?: number;
+  resistanceZone?: number;
+  riskLevel?: number;
+  recommendation?: string;
 }
 
 export interface LstmAnalysis {
-  predictions: number[];
-  trend: string;
-  confidence: number;
+  error?: string;
+  predictions?: number[];
+  trend?: string;
+  confidence?: number;
 }
 
 export interface AnalysisResponse {
@@ -32,14 +35,29 @@ export interface AnalysisResponse {
 @Injectable({ providedIn: 'root' })
 export class MarketDataService {
   private baseUrl = 'http://localhost:8080/api';
-
+  
   constructor(private http: HttpClient) {}
 
   getData(): Observable<MarketData[]> {
-    return this.http.get<MarketData[]>(this.baseUrl + '/market-data');
+    return this.http.get<MarketData[]>(this.baseUrl + '/market-data').pipe(
+      catchError(this.handleError)
+    );
   }
 
   getAnalysis(symbol: string = 'GOLD'): Observable<AnalysisResponse> {
-    return this.http.get<AnalysisResponse>(this.baseUrl + '/analysis/' + symbol);
+    return this.http.get<AnalysisResponse>(this.baseUrl + '/analysis/' + symbol).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  askRag(question: string): Observable<any> {
+    return this.http.post<any>(this.baseUrl + '/rag/ask', { question: question }).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  private handleError(error: HttpErrorResponse) {
+    console.error('API Fault Detected:', error.message, error);
+    return throwError(() => new Error('API communication error. Check console logs.'));
   }
 }

@@ -1,18 +1,23 @@
 package com.dealership.quant_trading.controller;
 
-import com.dealership.quant_trading.MarketData;
+import com.dealership.quant_trading.model.MarketData;
 import com.dealership.quant_trading.MarketDataRepository;
+import java.util.*;
+import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
-import java.util.*;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api")
 @CrossOrigin(origins = "http://localhost:4200")
 public class MarketDataController {
+
+    
+    private static final Logger logger = LoggerFactory.getLogger(MarketDataController.class);
 
     @Autowired
     private MarketDataRepository repository;
@@ -25,7 +30,7 @@ public class MarketDataController {
     }
 
     @GetMapping("/analysis/{symbol}")
-    public ResponseEntity<String> getAiAnalysis(@PathVariable String symbol) {
+    public ResponseEntity<Map<String, Object>> getAiAnalysis(@PathVariable String symbol) {
         List<MarketData> data = repository.findRecentData();
         Collections.reverse(data);
         
@@ -36,22 +41,28 @@ public class MarketDataController {
         payload.put("prices", prices);
         payload.put("steps", 5);
 
-        RestTemplate rest = new RestTemplate();
-        String q = "{}";
-        String l = "{}";
+        RestTemplate rest = new RestTemplate(); 
+        
+    
+        Map<String, Object> response = new HashMap<>();
         
         try {
-            q = rest.postForObject("http://127.0.0.1:8003/wyckoff-full", payload, String.class);
+            Object q = rest.postForObject("http://127.0.0.1:8003/wyckoff-full", payload, Object.class);
+            response.put("quant", q);
         } catch (Exception e) {
-            System.out.println("Quant AI Error: " + e.getMessage());
+            logger.error("Quant AI Error: {}", e.getMessage()); 
+            response.put("quant", Map.of("error", "Quant AI is offline")); 
         }
 
         try {
-            l = rest.postForObject("http://127.0.0.1:8004/predict", payload, String.class);
+            Object l = rest.postForObject("http://127.0.0.1:8004/predict", payload, Object.class);
+            response.put("lstm", l);
         } catch (Exception e) {
-            System.out.println("LSTM AI Error: " + e.getMessage());
+            logger.error("LSTM AI Error: {}", e.getMessage()); 
+            response.put("lstm", Map.of("error", "LSTM AI is offline"));
         }
 
-        return ResponseEntity.ok("{\"quant\": " + q + ", \"lstm\": " + l + "}");
+        
+        return ResponseEntity.ok(response);
     }
 }

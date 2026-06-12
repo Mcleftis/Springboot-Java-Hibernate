@@ -1,0 +1,50 @@
+name: CI Pipeline for GCP Artifact Registry
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  GCP_REGION: europe-west1
+  GCP_PROJECT_ID: quant-trading-project
+  GAR_REPOSITORY: quant-trading-repo
+  IMAGE_NAME: quant-trading-backend
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build with Maven
+        run: ./mvnw clean package -DskipTests
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev
+
+      - name: Build, tag, and push image to GAR
+        env:
+          IMAGE_PATH: ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GAR_REPOSITORY }}/${{ env.IMAGE_NAME }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $IMAGE_PATH:$IMAGE_TAG .
+          docker build -t $IMAGE_PATH:latest .
+          docker push $IMAGE_PATH:$IMAGE_TAG
+          docker push $IMAGE_PATH:latest

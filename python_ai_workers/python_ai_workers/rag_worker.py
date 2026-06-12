@@ -1,4 +1,4 @@
-import os
+﻿import os
 from flask import Flask, request, jsonify
 from langchain_community.document_loaders import TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -42,28 +42,24 @@ def format_docs(docs):
 def health():
     return jsonify({"status": "ok"}), 200
 
-
 @app.route("/ingest_local", methods=["POST"])
 def ingest_local_files():
-    files_to_load = ["lstm_output.txt", "quant_output.txt"]
+    files_to_load = ["outputs/report_for_rag.txt"]
     all_chunks = []
+    splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
 
     for file_path in files_to_load:
         if os.path.exists(file_path):
             try:
-                loader = TextLoader(file_path, encoding="utf-8")
+                loader = TextLoader(file_path, encoding='utf-8')
                 docs = loader.load()
-                splitter = RecursiveCharacterTextSplitter(
-                    chunk_size=500,
-                    chunk_overlap=50
-                )
                 chunks = splitter.split_documents(docs)
                 all_chunks.extend(chunks)
             except Exception as e:
                 return jsonify({"error": f"Failed to load {file_path}: {str(e)}"}), 500
 
     if not all_chunks:
-        return jsonify({"error": "No output files found to ingest."}), 400
+        return jsonify({"error": "No output files found to ingest. Make sure outputs/report_for_rag.txt exists."}), 400
 
     try:
         vs = get_vector_store()
@@ -71,14 +67,11 @@ def ingest_local_files():
     except Exception as e:
         return jsonify({"error": f"Failed to add documents to vector store: {str(e)}"}), 500
 
-    return jsonify({
-        "message": f"Ingested {len(all_chunks)} chunks from local worker outputs."
-    })
+    return jsonify({"message": f"Ingested {len(all_chunks)} chunks from local worker outputs."})
 
 @app.route("/ask", methods=["POST"])
 def ask_bot():
     data = request.get_json()
-
     if not data or "question" not in data:
         return jsonify({"error": "Missing 'question' field in request body."}), 400
 
@@ -99,7 +92,7 @@ def ask_bot():
         result = chain.invoke(question)
         return jsonify({"result": result})
     except Exception as e:
-        return jsonify({"error": f"Failed to process question: {str(e)}"}), 500
+        return jsonify({"error": f"Failed to process request: {str(e)}"}), 500
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=8002, debug=True, use_reloader=False)
+    app.run(host="0.0.0.0", port=8002)
