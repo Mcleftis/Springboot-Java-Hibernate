@@ -4,7 +4,7 @@ metadata:
   name: trading-backend
   namespace: quant-trading
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: trading-backend
@@ -62,10 +62,10 @@ spec:
             periodSeconds: 10
           resources:
             requests:
-              cpu: "250m"
+              cpu: "100m"
               memory: "512Mi"
             limits:
-              cpu: "1000m"
+              cpu: "500m"
               memory: "1Gi"
 ---
 apiVersion: v1
