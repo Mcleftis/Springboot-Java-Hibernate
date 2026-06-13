@@ -22,7 +22,7 @@ spec:
           effect: "NoSchedule"
       containers:
         - name: quant-ai-workers
-          image: europe-west1-docker.pkg.dev/strong-minutia-497313-f4/quant-trading-repo/quant-ai-workers:latest
+          image: europe-west1-docker.pkg.dev/strong-minutia-497313-f4/trading-repo/quant-ai-workers:latest
           imagePullPolicy: Always
           ports:
             - name: fastapi
