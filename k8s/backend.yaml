@@ -110,3 +110,5 @@ spec:
                 name: trading-backend
                 port:
                   number: 8080
+
+
