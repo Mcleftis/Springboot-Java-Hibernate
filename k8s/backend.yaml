@@ -25,6 +25,13 @@ spec:
           env:
             - name: SPRING_DATASOURCE_URL
               value: jdbc:postgresql://postgres:5432/quantdb
+            - name: SPRING_DATASOURCE_USERNAME
+              value: quant_user
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-secret
+                  key: password
             - name: SPRING_JPA_HIBERNATE_DDL_AUTO
               value: update
             - name: PYTHON_QUANT_URL
@@ -110,5 +117,3 @@ spec:
                 name: trading-backend
                 port:
                   number: 8080
-
-

@@ -29,6 +29,7 @@ spec:
       securityContext:
         runAsNonRoot: true
         runAsUser: 999
+        fsGroup: 999
       containers:
         - name: postgres
           image: postgres:15-alpine
@@ -40,7 +41,10 @@ spec:
             - name: POSTGRES_USER
               value: quant_user
             - name: POSTGRES_PASSWORD
-              value: quant_password_123!
+              valueFrom:
+                secretKeyRef:
+                  name: db-secret
+                  key: password
           resources:
             requests:
               cpu: "250m"
