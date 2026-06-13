@@ -18,8 +18,8 @@ spec:
         runAsUser: 1000
       containers:
         - name: trading-backend
-          image: fleet-manager:latest
-          imagePullPolicy: IfNotPresent
+          image: europe-west1-docker.pkg.dev/strong-minutia-497313-f4/quant-trading-repo/quant-trading-backend:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8080
           env:
