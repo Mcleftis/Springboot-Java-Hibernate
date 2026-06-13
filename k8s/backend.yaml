@@ -13,6 +13,8 @@ spec:
       labels:
         app: trading-backend
     spec:
+      nodeSelector:
+        cloud.google.com/gke-nodepool: default-pool
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
