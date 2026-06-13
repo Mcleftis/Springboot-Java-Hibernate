@@ -13,6 +13,13 @@ spec:
       labels:
         app: quant-ai-workers
     spec:
+      nodeSelector:
+        cloud.google.com/gke-spot: "true"
+      tolerations:
+        - key: "cloud.google.com/gke-spot"
+          operator: "Equal"
+          value: "true"
+          effect: "NoSchedule"
       containers:
         - name: quant-ai-workers
           image: europe-west1-docker.pkg.dev/strong-minutia-497313-f4/quant-trading-repo/quant-ai-workers:latest
