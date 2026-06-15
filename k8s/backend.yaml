@@ -40,12 +40,6 @@ spec:
               value: http://quant-ai-workers:8004
             - name: PYTHON_RAG_URL
               value: http://quant-ai-workers:8002
-            - name: AWS_ACCESS_KEY_ID
-              value: "test"
-            - name: AWS_SECRET_ACCESS_KEY
-              value: "test"
-            - name: AWS_REGION
-              value: "us-east-1"
           livenessProbe:
             httpGet:
               path: /actuator/health
