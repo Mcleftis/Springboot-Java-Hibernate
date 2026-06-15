@@ -18,7 +18,7 @@ spec:
         runAsUser: 1000
       containers:
         - name: trading-backend
-          image: europe-west1-docker.pkg.dev/strong-minutia-497313-f4/trading-repo/trading-backend:v4
+          image: europe-west1-docker.pkg.dev/strong-minutia-497313-f4/trading-repo/trading-backend:v5
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
