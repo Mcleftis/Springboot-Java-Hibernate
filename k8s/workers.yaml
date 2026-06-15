@@ -37,8 +37,8 @@ spec:
               containerPort: 8004
           resources:
             requests:
-              cpu: "500m"
-              memory: "1Gi"
+              cpu: "100m"
+              memory: "2Gi"
             limits:
               cpu: "2000m"
               memory: "4Gi"
@@ -81,3 +81,21 @@ spec:
     - name: lstm-worker
       port: 8004
       targetPort: 8004
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: ai-workers-keda
+  namespace: quant-trading
+spec:
+  scaleTargetRef:
+    name: quant-ai-workers
+  minReplicaCount: 0  # SCALE TO ZERO! Το απόλυτο FinOps.
+  maxReplicaCount: 3
+  triggers:
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus-operated.gmp-system.svc.cluster.local:9090
+        metricName: http_requests_total
+        threshold: '1'
+        query: sum(rate(http_requests_total{pod=~"quant-ai-workers.*"}[1m]))

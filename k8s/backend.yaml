@@ -13,8 +13,6 @@ spec:
       labels:
         app: trading-backend
     spec:
-      nodeSelector:
-        cloud.google.com/gke-nodepool: default-pool
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
@@ -80,25 +78,20 @@ spec:
     - port: 8080
       targetPort: 8080
 ---
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
 metadata:
-  name: trading-backend-hpa
+  name: trading-backend-keda
   namespace: quant-trading
 spec:
   scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
     name: trading-backend
-  minReplicas: 2
-  maxReplicas: 5
-  metrics:
-    - type: Resource
-      resource:
-        name: cpu
-        target:
-          type: Utilization
-          averageUtilization: 70
+  minReplicaCount: 1  # Η Java κρατάει 1 ελάχιστο για να απαντάει στα API ακαριαία
+  maxReplicaCount: 5
+  triggers:
+    - type: cpu
+      metadata:
+        value: "70"
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
