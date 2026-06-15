@@ -33,42 +33,32 @@ public class CsvBatchIngestor {
     @PostConstruct
     public void ingest() {
         Storage storage = StorageOptions.getDefaultInstance().getService();
-        String sql = "INSERT INTO market_data (record_date, \"close\") VALUES (?, ?)";
+        
+        
+        String sql = "INSERT INTO market_data (symbol, date, open, high, low, \"close\", volume, daily_return, range) VALUES ('POC', ?, 0.0, 0.0, 0.0, ?, 0, 0.0, 0.0)";
         DateTimeFormatter f = DateTimeFormatter.ofPattern("M/d/yyyy");
 
         for (String fileName : FILES) {
             try {
                 Blob blob = storage.get(BUCKET, fileName);
-                if (blob == null) {
-                    System.out.println("File not found in GCS: " + fileName);
-                    continue;
-                }
+                if (blob == null) continue;
 
                 List<Object[]> batchArgs = new ArrayList<>();
-                try (BufferedReader br = new BufferedReader(
-                        new InputStreamReader(Channels.newInputStream(blob.reader())))) {
+                try (BufferedReader br = new BufferedReader(new InputStreamReader(Channels.newInputStream(blob.reader())))) {
                     br.readLine();
                     String line;
                     while ((line = br.readLine()) != null) {
                         String[] v = line.split(",");
                         if (v.length < 2) continue;
+                        
                         LocalDate d;
-                        try {
-                            d = LocalDate.parse(v[0].trim());
-                        } catch (Exception ex) {
-                            try {
-                                d = LocalDate.parse(v[0].trim(), f);
-                            } catch (Exception e2) {
-                                continue;
-                            }
-                        }
+                        try { d = LocalDate.parse(v[0].trim()); } catch (Exception e) { try { d = LocalDate.parse(v[0].trim(), f); } catch (Exception e2) { continue; } }
+                        
                         double p;
-                        try {
-                            p = Double.parseDouble(v[1].trim().replace(",", "").replace("\"", ""));
-                        } catch (Exception ex) {
-                            continue;
-                        }
+                        try { p = Double.parseDouble(v[1].trim().replace(",", "").replace("\"", "")); } catch (Exception e) { continue; }
+                        
                         batchArgs.add(new Object[]{d, p});
+                        
                         if (batchArgs.size() == 1000) {
                             jdbcTemplate.batchUpdate(sql, batchArgs);
                             batchArgs.clear();
@@ -80,7 +70,7 @@ public class CsvBatchIngestor {
                 }
                 System.out.println("Ingested: " + fileName);
             } catch (Exception e) {
-                System.err.println("Error ingesting " + fileName + ": " + e.getMessage());
+                System.err.println("Error: " + e.getMessage());
             }
         }
     }
