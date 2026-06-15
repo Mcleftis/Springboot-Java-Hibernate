@@ -18,7 +18,7 @@ spec:
         runAsUser: 1000
       containers:
         - name: trading-backend
-          image: europe-west1-docker.pkg.dev/strong-minutia-497313-f4/trading-repo/trading-backend:v3
+          image: europe-west1-docker.pkg.dev/strong-minutia-497313-f4/trading-repo/trading-backend:v4
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
@@ -80,7 +80,7 @@ metadata:
 spec:
   scaleTargetRef:
     name: trading-backend
-  minReplicaCount: 1  # Η Java κρατάει 1 ελάχιστο για να απαντάει στα API ακαριαία
+  minReplicaCount: 1  
   maxReplicaCount: 5
   triggers:
     - type: cpu
