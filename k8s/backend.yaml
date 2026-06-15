@@ -30,7 +30,7 @@ spec:
             - name: SPRING_DATASOURCE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: db-secret
+                  name: postgres-credentials
                   key: password
             - name: SPRING_JPA_HIBERNATE_DDL_AUTO
               value: update
