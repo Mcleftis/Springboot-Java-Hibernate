@@ -33,7 +33,7 @@ public class CsvBatchIngestor {
     @PostConstruct
     public void ingest() {
         Storage storage = StorageOptions.getDefaultInstance().getService();
-        String sql = "INSERT INTO market_data (record_date, close) VALUES (?, ?) ON CONFLICT (record_date) DO NOTHING";
+        String sql = "INSERT INTO market_data (record_date, close) VALUES (?, ?)";
         DateTimeFormatter f = DateTimeFormatter.ofPattern("M/d/yyyy");
 
         for (String fileName : FILES) {
