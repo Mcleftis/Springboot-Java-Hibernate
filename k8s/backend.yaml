@@ -41,14 +41,12 @@ spec:
             - name: PYTHON_RAG_URL
               value: http://quant-ai-workers:8002
           livenessProbe:
-            httpGet:
-              path: /actuator/health
+            tcpSocket:
               port: 8080
             initialDelaySeconds: 180
             periodSeconds: 15
           readinessProbe:
-            httpGet:
-              path: /actuator/health
+            tcpSocket:
               port: 8080
             initialDelaySeconds: 180
             periodSeconds: 10
