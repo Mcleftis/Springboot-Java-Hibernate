@@ -82,8 +82,8 @@ spec:
   maxReplicaCount: 5
   triggers:
     - type: cpu
+      metricType: Utilization
       metadata:
-        metricType: Utilization
         value: '70'
 ---
 apiVersion: networking.k8s.io/v1
