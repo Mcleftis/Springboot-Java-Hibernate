@@ -83,6 +83,7 @@ spec:
   triggers:
     - type: cpu
       metadata:
+        type: Utilization
         value: "70"
 ---
 apiVersion: networking.k8s.io/v1
@@ -104,3 +105,5 @@ spec:
                 name: trading-backend
                 port:
                   number: 8080
+
+
