@@ -90,12 +90,12 @@ metadata:
 spec:
   scaleTargetRef:
     name: quant-ai-workers
-  minReplicaCount: 0  # SCALE TO ZERO! Το απόλυτο FinOps.
+  minReplicaCount: 0
   maxReplicaCount: 3
   triggers:
     - type: prometheus
       metadata:
-        serverAddress: http://prometheus-operated.gmp-system.svc.cluster.local:9090
+        serverAddress: http://kubecost-prometheus-server.kubecost.svc.cluster.local:80
         metricName: http_requests_total
         threshold: '1'
         query: sum(rate(http_requests_total{pod=~"quant-ai-workers.*"}[1m]))
