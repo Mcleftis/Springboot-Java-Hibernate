@@ -3,6 +3,8 @@ kind: Deployment
 metadata:
   name: quant-ai-workers
   namespace: quant-trading
+  labels:
+    team: data
 spec:
   replicas: 1
   selector:
@@ -12,6 +14,7 @@ spec:
     metadata:
       labels:
         app: quant-ai-workers
+        team: data
     spec:
       nodeSelector:
         cloud.google.com/gke-spot: "true"
@@ -20,6 +23,23 @@ spec:
           operator: "Equal"
           value: "true"
           effect: "NoSchedule"
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: topology.kubernetes.io/zone
+                    operator: In
+                    values:
+                      - europe-west1-b
+            - weight: 50
+              preference:
+                matchExpressions:
+                  - key: topology.kubernetes.io/zone
+                    operator: In
+                    values:
+                      - europe-west4-a
       containers:
         - name: quant-ai-workers
           image: europe-west1-docker.pkg.dev/strong-minutia-497313-f4/trading-repo/quant-ai-workers:latest
@@ -62,6 +82,8 @@ kind: Service
 metadata:
   name: quant-ai-workers
   namespace: quant-trading
+  labels:
+    team: data
 spec:
   selector:
     app: quant-ai-workers
@@ -87,6 +109,8 @@ kind: ScaledObject
 metadata:
   name: ai-workers-keda
   namespace: quant-trading
+  labels:
+    team: data
 spec:
   scaleTargetRef:
     name: quant-ai-workers
@@ -99,3 +123,9 @@ spec:
         metricName: http_requests_total
         threshold: '1'
         query: sum(rate(http_requests_total{pod=~"quant-ai-workers.*"}[1m]))
+    - type: cron
+      metadata:
+        timezone: Europe/Athens
+        start: 00 00 * * *
+        end: 07 00 * * *
+        desiredReplicas: "0"

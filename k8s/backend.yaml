@@ -3,6 +3,8 @@ kind: Deployment
 metadata:
   name: trading-backend
   namespace: quant-trading
+  labels:
+    team: backend
 spec:
   replicas: 1
   selector:
@@ -12,6 +14,7 @@ spec:
     metadata:
       labels:
         app: trading-backend
+        team: backend
     spec:
       securityContext:
         runAsNonRoot: true
@@ -63,6 +66,8 @@ kind: Service
 metadata:
   name: trading-backend
   namespace: quant-trading
+  labels:
+    team: backend
 spec:
   selector:
     app: trading-backend
@@ -75,6 +80,8 @@ kind: ScaledObject
 metadata:
   name: trading-backend-keda
   namespace: quant-trading
+  labels:
+    team: backend
 spec:
   scaleTargetRef:
     name: trading-backend
@@ -85,6 +92,12 @@ spec:
       metricType: Utilization
       metadata:
         value: '70'
+    - type: cron
+      metadata:
+        timezone: Europe/Athens
+        start: 00 00 * * *
+        end: 07 00 * * *
+        desiredReplicas: "0"
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -93,6 +106,8 @@ metadata:
   namespace: quant-trading
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /
+  labels:
+    team: backend
 spec:
   ingressClassName: nginx
   rules:
@@ -105,5 +120,3 @@ spec:
                 name: trading-backend
                 port:
                   number: 8080
-
-
