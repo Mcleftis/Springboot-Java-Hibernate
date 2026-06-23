@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-market-data
+  namespace: quant-trading
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mcp-market-data
+  template:
+    metadata:
+      labels:
+        app: mcp-market-data
+    spec:
+      containers:
+        - name: mcp-market-data
+          image: europe-west1-docker.pkg.dev/strong-minutia-497313-f4/trading-repo/mcp-market-data:v1
+          ports:
+            - containerPort: 8005
+          env:
+            - name: RABBITMQ_HOST
+              value: "rabbitmq"
+            - name: RABBITMQ_USER
+              value: "quant_user"
+            - name: RABBITMQ_PASS
+              value: "fleetpass"
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8005
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8005
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-market-data
+  namespace: quant-trading
+spec:
+  selector:
+    app: mcp-market-data
+  ports:
+    - port: 8005
+      targetPort: 8005

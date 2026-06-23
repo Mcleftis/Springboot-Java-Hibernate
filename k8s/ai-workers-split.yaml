@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: quant-worker
+  namespace: quant-trading
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: quant-worker } }
+  template:
+    metadata: { labels: { app: quant-worker } }
+    spec:
+      containers:
+        - name: quant-worker
+          image: europe-west1-docker.pkg.dev/strong-minutia-497313-f4/trading-repo/quant-worker:v1
+          ports: [{ containerPort: 8003 }]
+          resources:
+            requests: { cpu: "50m", memory: "128Mi" }
+            limits:   { cpu: "500m", memory: "512Mi" }
+          livenessProbe:  { httpGet: { path: /health, port: 8003 }, initialDelaySeconds: 15, periodSeconds: 20 }
+          readinessProbe: { httpGet: { path: /health, port: 8003 }, initialDelaySeconds: 10, periodSeconds: 10 }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: quant-worker, namespace: quant-trading }
+spec:
+  selector: { app: quant-worker }
+  ports: [{ port: 8003, targetPort: 8003 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lstm-worker
+  namespace: quant-trading
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: lstm-worker } }
+  template:
+    metadata: { labels: { app: lstm-worker } }
+    spec:
+      containers:
+        - name: lstm-worker
+          image: europe-west1-docker.pkg.dev/strong-minutia-497313-f4/trading-repo/lstm-worker:v1
+          ports: [{ containerPort: 8004 }]
+          resources:
+            requests: { cpu: "100m", memory: "512Mi" }
+            limits:   { cpu: "1000m", memory: "2Gi" }
+          livenessProbe:  { httpGet: { path: /health, port: 8004 }, initialDelaySeconds: 60, periodSeconds: 30 }
+          readinessProbe: { httpGet: { path: /health, port: 8004 }, initialDelaySeconds: 30, periodSeconds: 15 }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: lstm-worker, namespace: quant-trading }
+spec:
+  selector: { app: lstm-worker }
+  ports: [{ port: 8004, targetPort: 8004 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rag-worker
+  namespace: quant-trading
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: rag-worker } }
+  template:
+    metadata: { labels: { app: rag-worker } }
+    spec:
+      containers:
+        - name: rag-worker
+          image: europe-west1-docker.pkg.dev/strong-minutia-497313-f4/trading-repo/rag-worker:v1
+          ports: [{ containerPort: 8002 }]
+          resources:
+            requests: { cpu: "50m", memory: "256Mi" }
+            limits:   { cpu: "500m", memory: "768Mi" }
+          livenessProbe:  { httpGet: { path: /health, port: 8002 }, initialDelaySeconds: 20, periodSeconds: 20 }
+          readinessProbe: { httpGet: { path: /health, port: 8002 }, initialDelaySeconds: 10, periodSeconds: 10 }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: rag-worker, namespace: quant-trading }
+spec:
+  selector: { app: rag-worker }
+  ports: [{ port: 8002, targetPort: 8002 }]

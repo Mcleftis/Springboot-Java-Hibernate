@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: rabbitmq-keda-auth
+  namespace: quant-trading
+type: Opaque
+stringData:
+  host: "amqp://quant_user:fleetpass@rabbitmq:5672/"
+---
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: rabbitmq-trigger-auth
+  namespace: quant-trading
+spec:
+  secretTargetRef:
+    - parameter: host
+      name: rabbitmq-keda-auth
+      key: host
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: lstm-worker-queue-scaler
+  namespace: quant-trading
+spec:
+  scaleTargetRef:
+    name: lstm-worker
+  minReplicaCount: 0
+  maxReplicaCount: 5
+  cooldownPeriod: 120
+  pollingInterval: 15
+  triggers:
+    - type: rabbitmq
+      metadata:
+        protocol: amqp
+        queueName: analysis_queue
+        mode: QueueLength
+        value: "5"
+      authenticationRef:
+        name: rabbitmq-trigger-auth
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: quant-worker-queue-scaler
+  namespace: quant-trading
+spec:
+  scaleTargetRef:
+    name: quant-worker
+  minReplicaCount: 1
+  maxReplicaCount: 5
+  cooldownPeriod: 60
+  pollingInterval: 15
+  triggers:
+    - type: rabbitmq
+      metadata:
+        protocol: amqp
+        queueName: analysis_queue
+        mode: QueueLength
+        value: "10"
+      authenticationRef:
+        name: rabbitmq-trigger-auth
