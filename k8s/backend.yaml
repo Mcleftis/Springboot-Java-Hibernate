@@ -37,12 +37,23 @@ spec:
                   key: password
             - name: SPRING_JPA_HIBERNATE_DDL_AUTO
               value: update
+            - name: SPRING_RABBITMQ_HOST
+              value: rabbitmq
+            - name: SPRING_RABBITMQ_PORT
+              value: "5672"
+            - name: SPRING_RABBITMQ_USERNAME
+              value: quant_user
+            - name: SPRING_RABBITMQ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: password
             - name: PYTHON_QUANT_URL
-              value: http://quant-ai-workers:8003
+              value: http://quant-worker:8003
             - name: PYTHON_LSTM_URL
-              value: http://quant-ai-workers:8004
+              value: http://lstm-worker:8004
             - name: PYTHON_RAG_URL
-              value: http://quant-ai-workers:8002
+              value: http://rag-worker:8002
           livenessProbe:
             tcpSocket:
               port: 8080
@@ -85,7 +96,7 @@ metadata:
 spec:
   scaleTargetRef:
     name: trading-backend
-  minReplicaCount: 1  
+  minReplicaCount: 1
   maxReplicaCount: 5
   triggers:
     - type: cpu
