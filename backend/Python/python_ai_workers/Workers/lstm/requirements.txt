@@ -1,0 +1,6 @@
+flask
+pandas
+numpy
+scikit-learn
+tensorflow-cpu
+prometheus-flask-exporter==0.23.0

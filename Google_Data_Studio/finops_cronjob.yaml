@@ -1,0 +1,38 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: finops-etl-job
+  namespace: quant-trading
+spec:
+  schedule: "55 23 * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          nodeSelector:
+            cloud.google.com/gke-spot: "true"
+          tolerations:
+            - key: "cloud.google.com/gke-spot"
+              operator: "Equal"
+              value: "true"
+              effect: "NoSchedule"
+          containers:
+            - name: finops-etl
+              image: europe-west1-docker.pkg.dev/strong-minutia-497313-f4/trading-repo/finops-etl:latest
+              imagePullPolicy: Always
+              resources:
+                requests:
+                  cpu: "100m"
+                  memory: "256Mi"
+                limits:
+                  cpu: "250m"
+                  memory: "512Mi"
+              env:
+                - name: DB_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-credentials
+                      key: database_url
+          restartPolicy: OnFailure

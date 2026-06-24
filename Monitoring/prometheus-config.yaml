@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: quant-trading
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 10s
+    scrape_configs:
+      - job_name: 'trading-backend'
+        metrics_path: /actuator/prometheus
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces: { names: [quant-trading] }
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            action: keep
+            regex: trading-backend
+          - source_labels: [__meta_kubernetes_pod_container_port_number]
+            action: keep
+            regex: "8080"
+      - job_name: 'quant-worker'
+        metrics_path: /metrics
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces: { names: [quant-trading] }
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            action: keep
+            regex: quant-worker
+      - job_name: 'lstm-worker'
+        metrics_path: /metrics
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces: { names: [quant-trading] }
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            action: keep
+            regex: lstm-worker
+      - job_name: 'rag-worker'
+        metrics_path: /metrics
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces: { names: [quant-trading] }
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            action: keep
+            regex: rag-worker
