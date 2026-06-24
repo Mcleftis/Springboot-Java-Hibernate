@@ -1,0 +1,79 @@
+POSTGRES PRODUCTION HARDENING - ΟΔΗΓΙΕΣ
+
+Τα 4 αρχεία πάνε στο k8s/. Σειρά εφαρμογής:
+
+------------------------------------------------------------
+1. NETWORK POLICY (πρώτα - μηδέν ρίσκο)
+------------------------------------------------------------
+cp ~/Desktop/postgres-networkpolicy.yaml k8s/
+kubectl apply -f k8s/postgres-networkpolicy.yaml
+# ΠΡΟΣΟΧΗ: χρειάζεται GKE Dataplane V2 ή Calico. Αν δεν ειναι enabled,
+# η policy αγνοειται σιωπηλα (δεν σπαει τιποτα).
+# Verify: kubectl get networkpolicy -n quant-trading
+
+------------------------------------------------------------
+2. POSTGRES LB WHITELIST
+------------------------------------------------------------
+# ΠΡΩΤΑ βρες τη δικη σου public IP:
+curl ifconfig.me
+# Αντικατεστησε το 0.0.0.0/32 στο postgres_lb.yaml με: <H_IP_SOY>/32
+cp ~/Desktop/postgres_lb.yaml k8s/
+kubectl apply -f k8s/postgres_lb.yaml
+# Οι Looker Studio IP ranges αλλαζουν - αν χαθει συνδεση, ξαναβαλε
+# τα τρεχοντα Google ranges η χρησιμοποιησε Cloud SQL Auth Proxy.
+
+------------------------------------------------------------
+3. POSTGRES EXPORTER
+------------------------------------------------------------
+cp ~/Desktop/postgres-exporter.yaml k8s/
+kubectl apply -f k8s/postgres-exporter.yaml
+# Verify: kubectl get pods -n quant-trading | grep exporter
+
+------------------------------------------------------------
+4. BACKUP CRONJOB
+------------------------------------------------------------
+cp ~/Desktop/postgres-backup-cronjob.yaml k8s/
+kubectl apply -f k8s/postgres-backup-cronjob.yaml
+# Test χειροκινητα χωρις να περιμενεις τις 02:30:
+kubectl create job --from=cronjob/postgres-backup manual-backup-test -n quant-trading
+kubectl logs -f job/manual-backup-test -n quant-trading
+# Verify στο GCS:
+gsutil ls gs://quant-trading-data-strong-minutia/backups/
+
+------------------------------------------------------------
+5. PROMETHEUS - προσθηκη job για postgres-exporter
+------------------------------------------------------------
+# Στο Monitoring/prometheus-config.yaml προσθεσε ΜΕΣΑ στο scrape_configs:
+
+      - job_name: 'postgres'
+        metrics_path: /metrics
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces: { names: [quant-trading] }
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            action: keep
+            regex: postgres-exporter
+
+# Μετα:
+kubectl apply -f Monitoring/prometheus-config.yaml
+kubectl rollout restart deployment/prometheus -n quant-trading
+
+------------------------------------------------------------
+6. GRAFANA - 3 κρισιμα panels (PromQL)
+------------------------------------------------------------
+# Connection saturation:
+sum(pg_stat_activity_count) / pg_settings_max_connections * 100
+
+# Cache hit ratio (θελει > 95):
+pg_stat_database_blks_hit / (pg_stat_database_blks_hit + pg_stat_database_blks_read) * 100
+
+# Database size:
+pg_database_size_bytes
+
+------------------------------------------------------------
+7. COMMIT
+------------------------------------------------------------
+git add k8s/ Monitoring/
+git commit -m "feat: postgres backup, networkpolicy, lb whitelist, exporter"
+git push origin main

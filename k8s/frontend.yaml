@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: quant-trading-ui
+  namespace: quant-trading
+  labels:
+    team: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: quant-trading-ui
+  template:
+    metadata:
+      labels:
+        app: quant-trading-ui
+        team: frontend
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      containers:
+        - name: quant-trading-ui
+          image: europe-west1-docker.pkg.dev/strong-minutia-497313-f4/trading-repo/quant-trading-ui:v1
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "300m"
+              memory: "512Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: quant-trading-ui
+  namespace: quant-trading
+  labels:
+    team: frontend
+spec:
+  selector:
+    app: quant-trading-ui
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: quant-trading-ui-keda
+  namespace: quant-trading
+  labels:
+    team: frontend
+spec:
+  scaleTargetRef:
+    name: quant-trading-ui
+  minReplicaCount: 1
+  maxReplicaCount: 3
+  triggers:
+    - type: cpu
+      metricType: Utilization
+      metadata:
+        value: '70'
+    - type: cron
+      metadata:
+        timezone: Europe/Athens
+        start: 00 00 * * *
+        end: 07 00 * * *
+        desiredReplicas: "0"

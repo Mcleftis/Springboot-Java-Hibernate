@@ -1,0 +1,72 @@
+GKE NATIVE INGRESS + CLOUD ARMOR - SETUP
+
+ROOT: ~/Desktop/Springboot-Java-Hibernate
+PROJECT: strong-minutia-497313-f4
+
+========================================================
+ΒΗΜΑ 1 - Static IP (reserved global)
+========================================================
+gcloud compute addresses create quant-trading-ip --global
+gcloud compute addresses describe quant-trading-ip --global --format="get(address)"
+# Σημειωσε την IP που θα βγαλει.
+
+========================================================
+ΒΗΜΑ 2 - Cloud Armor security policy (μεσω gcloud)
+========================================================
+gcloud compute security-policies create quant-armor-policy \
+  --description "WAF and rate limiting for quant-trading"
+
+# Rate limiting: max 100 req/min ανα IP
+gcloud compute security-policies rules create 1000 \
+  --security-policy quant-armor-policy \
+  --expression "true" \
+  --action "rate-based-ban" \
+  --rate-limit-threshold-count 100 \
+  --rate-limit-threshold-interval-sec 60 \
+  --ban-duration-sec 300 \
+  --conform-action allow \
+  --exceed-action "deny-429" \
+  --enforce-on-key IP
+
+# OWASP - SQL injection protection (preconfigured WAF rule)
+gcloud compute security-policies rules create 2000 \
+  --security-policy quant-armor-policy \
+  --expression "evaluatePreconfiguredExpr('sqli-v33-stable')" \
+  --action "deny-403"
+
+# OWASP - XSS protection
+gcloud compute security-policies rules create 2001 \
+  --security-policy quant-armor-policy \
+  --expression "evaluatePreconfiguredExpr('xss-v33-stable')" \
+  --action "deny-403"
+
+========================================================
+ΒΗΜΑ 3 - Εφαρμογη k8s manifests
+========================================================
+# Αντεγραψε στο ROOT/k8s/ τα: backendconfig.yaml, gke-ingress.yaml
+# ΚΑΙ αλλαξε το trading-backend Service σε NodePort (δες gke-ingress.yaml comment)
+
+kubectl apply -f k8s/backendconfig.yaml
+kubectl apply -f k8s/gke-ingress.yaml
+
+========================================================
+ΒΗΜΑ 4 - Verify
+========================================================
+kubectl describe ingress quant-gke-ingress -n quant-trading
+# Περιμενε ~5-10 λεπτα να σηκωθει ο Load Balancer (ADDRESS field).
+gcloud compute security-policies describe quant-armor-policy
+
+========================================================
+ΣΗΜΑΝΤΙΚΟ - FinOps trade-off
+========================================================
+# Αυτο το setup ΑΝΤΙΚΑΘΙΣΤΑ το nginx ingress.
+# Δημιουργει εναν global Application Load Balancer (~18-20 USD/μηνα fixed).
+# Ακυρωνει το FinOps οφελος του scale-to-zero για το ingress layer.
+# Κρατα ΕΙΤΕ το nginx ΕΙΤΕ αυτο - οχι και τα δυο μαζι.
+
+========================================================
+ΧΩΡΙΣ DOMAIN
+========================================================
+# Χωρις domain ΔΕΝ εχεις managed SSL (HTTPS).
+# Η εφαρμογη θα ειναι προσβασιμη σε http://<STATIC_IP>/api
+# Για HTTPS χρειαζεσαι domain + ManagedCertificate resource.

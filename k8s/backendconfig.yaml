@@ -1,0 +1,17 @@
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: quant-backendconfig
+  namespace: quant-trading
+spec:
+  securityPolicy:
+    name: quant-armor-policy
+  healthCheck:
+    checkIntervalSec: 15
+    timeoutSec: 5
+    healthyThreshold: 1
+    unhealthyThreshold: 3
+    type: HTTP
+    requestPath: /actuator/health
+    port: 8080
+  timeoutSec: 30

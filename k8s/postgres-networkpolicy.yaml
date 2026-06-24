@@ -1,0 +1,33 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: postgres-allow-internal
+  namespace: quant-trading
+  labels:
+    team: database
+spec:
+  podSelector:
+    matchLabels:
+      app: postgres
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: trading-backend
+        - podSelector:
+            matchLabels:
+              app: quant-worker
+        - podSelector:
+            matchLabels:
+              app: lstm-worker
+        - podSelector:
+            matchLabels:
+              app: rag-worker
+        - podSelector:
+            matchLabels:
+              app: postgres-exporter
+      ports:
+        - protocol: TCP
+          port: 5432

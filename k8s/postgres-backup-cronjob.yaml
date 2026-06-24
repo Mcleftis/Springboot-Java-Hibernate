@@ -1,0 +1,48 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-backup
+  namespace: quant-trading
+  labels:
+    team: database
+spec:
+  schedule: "30 2 * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          nodeSelector:
+            cloud.google.com/gke-spot: "true"
+          tolerations:
+            - key: "cloud.google.com/gke-spot"
+              operator: "Equal"
+              value: "true"
+              effect: "NoSchedule"
+          containers:
+            - name: postgres-backup
+              image: google/cloud-sdk:slim
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  apt-get update && apt-get install -y postgresql-client
+                  TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+                  PGPASSWORD=$DB_PASSWORD pg_dump -h postgres -U quant_user -d quantdb -F c -f /tmp/quantdb-$TIMESTAMP.dump
+                  gsutil cp /tmp/quantdb-$TIMESTAMP.dump gs://quant-trading-data-strong-minutia/backups/quantdb-$TIMESTAMP.dump
+                  echo "Backup completed: quantdb-$TIMESTAMP.dump"
+              env:
+                - name: DB_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-credentials
+                      key: password
+              resources:
+                requests:
+                  cpu: "100m"
+                  memory: "256Mi"
+                limits:
+                  cpu: "250m"
+                  memory: "512Mi"
+          restartPolicy: OnFailure

@@ -7,12 +7,11 @@ on:
 
 env:
   GCP_REGION: europe-west1
-  GCP_PROJECT_ID: quant-trading-project
-  GAR_REPOSITORY: quant-trading-repo
-  IMAGE_NAME: quant-trading-backend
+  GCP_PROJECT_ID: strong-minutia-497313-f4
+  GAR_REPOSITORY: trading-repo
 
 jobs:
-  build-and-push:
+  build-backend:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -26,6 +25,7 @@ jobs:
           cache: maven
 
       - name: Build with Maven
+        working-directory: backend/Java
         run: ./mvnw clean package -DskipTests
 
       - name: Authenticate to Google Cloud
@@ -39,12 +39,48 @@ jobs:
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev
 
-      - name: Build, tag, and push image to GAR
+      - name: Build and push backend
+        working-directory: backend/Java
         env:
-          IMAGE_PATH: ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GAR_REPOSITORY }}/${{ env.IMAGE_NAME }}
-          IMAGE_TAG: ${{ github.sha }}
+          IMAGE_PATH: ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GAR_REPOSITORY }}/trading-backend
         run: |
-          docker build -t $IMAGE_PATH:$IMAGE_TAG .
-          docker build -t $IMAGE_PATH:latest .
-          docker push $IMAGE_PATH:$IMAGE_TAG
-          docker push $IMAGE_PATH:latest
+          docker build -f Dockerfile.simple -t $IMAGE_PATH:${{ github.sha }} .
+          docker push $IMAGE_PATH:${{ github.sha }}
+
+  build-services:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: quant-worker
+            context: backend/Python/python_ai_workers/Workers/quant
+          - name: lstm-worker
+            context: backend/Python/python_ai_workers/Workers/lstm
+          - name: rag-worker
+            context: backend/Python/python_ai_workers/Workers/rag
+          - name: mcp-market-data
+            context: backend/Python/python_ai_workers/Workers/mcp_server
+          - name: quant-trading-ui
+            context: frontend/angular_css_html
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev
+
+      - name: Build and push ${{ matrix.name }}
+        working-directory: ${{ matrix.context }}
+        env:
+          IMAGE_PATH: ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GAR_REPOSITORY }}/${{ matrix.name }}
+        run: |
+          docker build -t $IMAGE_PATH:${{ github.sha }} .
+          docker push $IMAGE_PATH:${{ github.sha }}

@@ -1,0 +1,92 @@
+RUNBOOK - ΠΛΗΡΗΣ ΥΛΟΠΟΙΗΣΗ RABBITMQ + MCP + ASYNC
+Εκτέλεσε με τη σειρά. Επιβεβαίωσε κάθε βήμα πριν το επόμενο.
+
+ROOT: ~/Desktop/Springboot-Java-Hibernate
+REG: europe-west1-docker.pkg.dev/strong-minutia-497313-f4/trading-repo
+
+========================================================
+ΒΗΜΑ 1 - RabbitMQ deployment (Helm)
+========================================================
+helm repo add bitnami https://charts.bitnami.com/bitnami
+helm repo update
+helm install rabbitmq bitnami/rabbitmq \
+  -n quant-trading \
+  -f k8s/rabbitmq-values.yaml
+
+Verify:
+kubectl get pods -n quant-trading | grep rabbitmq
+(περίμενε 1/1 Running)
+
+========================================================
+ΒΗΜΑ 2 - MCP HTTP service: build + push + deploy
+========================================================
+cd backend/Python/python_ai_workers/Workers/mcp_server
+# αντέγραψε εδώ τα: mcp_http_server.py, requirements.txt, Dockerfile, .dockerignore
+
+docker build -t $REG/mcp-market-data:v1 .
+docker push $REG/mcp-market-data:v1
+
+# αντέγραψε k8s/mcp-market-data.yaml στο ROOT/k8s/
+kubectl apply -f k8s/mcp-market-data.yaml
+kubectl get pods -n quant-trading | grep mcp
+
+========================================================
+ΒΗΜΑ 3 - Workers ως consumers: rebuild
+========================================================
+# Σε quant/ και lstm/:
+#  - πρόσθεσε consumer.py
+#  - εφάρμοσε INTEGRATION.txt (τα snippets στο τέλος των *_worker.py)
+#  - πρόσθεσε pika + psycopg2-binary στο requirements.txt κάθε worker
+
+cd backend/Python/python_ai_workers/Workers
+docker build -t $REG/quant-worker:v2 ./quant && docker push $REG/quant-worker:v2
+docker build -t $REG/lstm-worker:v2 ./lstm && docker push $REG/lstm-worker:v2
+
+# στο k8s/ai-workers-split.yaml: env RABBITMQ_HOST, WORKER_NAME, DB_URL + bump :v2
+kubectl apply -f k8s/ai-workers-split.yaml
+
+========================================================
+ΒΗΜΑ 4 - Java: bug fix + async refactor
+========================================================
+# εφάρμοσε ΟΛΑ τα JAVA_CHANGES.txt
+cd backend/Java
+./mvnw clean package -DskipTests
+docker build --no-cache -f Dockerfile.simple -t $REG/trading-backend:v5 .
+docker push $REG/trading-backend:v5
+# bump :v5 στο k8s/backend.yaml
+
+========================================================
+ΒΗΜΑ 5 - KEDA scalers στην ουρά
+========================================================
+# αντέγραψε k8s/keda-rabbitmq-scalers.yaml στο ROOT/k8s/
+kubectl apply -f k8s/keda-rabbitmq-scalers.yaml
+
+========================================================
+ΒΗΜΑ 6 - COMMIT στο Git (ArgoCD source of truth)
+========================================================
+git add k8s/ backend/
+git commit -m "feat: rabbitmq async pipeline, mcp service, keda queue scaling"
+git push origin main
+# ArgoCD Sync
+
+========================================================
+ΒΗΜΑ 7 - END TO END TEST
+========================================================
+# trigger ingestion μέσω MCP:
+kubectl port-forward -n quant-trading svc/mcp-market-data 8005:8005 &
+curl -X POST "http://localhost:8005/ingest/GC=F?period=6mo"
+# -> {"status":"PUBLISHED",...}
+
+# παρακολούθησε τους workers να σηκώνονται (KEDA):
+kubectl get pods -n quant-trading -w
+
+# δες το αποτέλεσμα να γράφτηκε:
+curl "http://localhost:8005/health"
+# και μέσω Java async result endpoint (αφού γίνει port-forward backend):
+# curl http://localhost:8080/api/async/result/GC=F
+
+========================================================
+ΒΗΜΑ 8 - Prometheus: πρόσθεσε mcp-market-data job
+========================================================
+# στο Monitoring/prometheus-config.yaml πρόσθεσε job mcp-market-data
+# (regex: mcp-market-data) και κάνε rollout restart prometheus

@@ -1,0 +1,112 @@
+JAVA BACKEND ΑΛΛΑΓΕΣ
+
+========================================================
+1. BUG FIX - MarketDataController.java
+========================================================
+Βρες ΟΛΕΣ τις γραμμές με 127.0.0.1 και αντικατέστησε με τα K8s service names:
+
+ΑΠΟ:  rest.postForObject("http://127.0.0.1:8003/wyckoff-full", ...)
+ΣΕ:   rest.postForObject("http://quant-worker:8003/wyckoff-full", ...)
+
+ΑΠΟ:  "http://127.0.0.1:8004/predict"
+ΣΕ:   "http://lstm-worker:8004/predict"
+
+ΑΠΟ:  "http://127.0.0.1:8002/..."
+ΣΕ:   "http://rag-worker:8002/..."
+
+========================================================
+2. application.properties - πρόσθεσε RabbitMQ connection
+========================================================
+spring.rabbitmq.host=rabbitmq
+spring.rabbitmq.port=5672
+spring.rabbitmq.username=quant_user
+spring.rabbitmq.password=fleetpass
+
+========================================================
+3. RabbitConfig.java - ΝΕΟ αρχείο (δηλώνει durable queue)
+   path: src/main/java/com/dealership/quant_trading/config/RabbitConfig.java
+========================================================
+package com.dealership.quant_trading.config;
+
+import org.springframework.amqp.core.Queue;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class RabbitConfig {
+    @Bean
+    public Queue analysisQueue() {
+        return new Queue("analysis_queue", true);
+    }
+}
+
+========================================================
+4. AnalysisController.java - ΝΕΟ αρχείο (async request-reply)
+   path: src/main/java/com/dealership/quant_trading/controller/AnalysisController.java
+========================================================
+package com.dealership.quant_trading.controller;
+
+import com.dealership.quant_trading.MarketDataRepository;
+import com.dealership.quant_trading.model.MarketData;
+import java.util.*;
+import java.util.stream.Collectors;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.web.bind.annotation.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+@RestController
+@RequestMapping("/api/async")
+@CrossOrigin(origins = "*")
+public class AnalysisController {
+
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
+
+    @Autowired
+    private MarketDataRepository repository;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    private final ObjectMapper mapper = new ObjectMapper();
+
+    @PostMapping("/analyze/{symbol}")
+    public ResponseEntity<Map<String, Object>> submitAnalysis(@PathVariable String symbol) {
+        try {
+            List<MarketData> data = repository.findRecentData();
+            Collections.reverse(data);
+            List<Double> prices = data.stream().map(MarketData::getClose).collect(Collectors.toList());
+
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("symbol", symbol);
+            payload.put("prices", prices);
+            payload.put("steps", 5);
+
+            rabbitTemplate.convertAndSend("analysis_queue", mapper.writeValueAsString(payload));
+
+            Map<String, Object> resp = new HashMap<>();
+            resp.put("status", "PENDING");
+            resp.put("symbol", symbol);
+            resp.put("message", "Analysis submitted. Poll /api/async/result/" + symbol);
+            return ResponseEntity.accepted().body(resp);
+        } catch (Exception e) {
+            Map<String, Object> err = new HashMap<>();
+            err.put("error", e.getMessage());
+            return ResponseEntity.internalServerError().body(err);
+        }
+    }
+
+    @GetMapping("/result/{symbol}")
+    public ResponseEntity<List<Map<String, Object>>> getResult(@PathVariable String symbol) {
+        List<Map<String, Object>> results = jdbcTemplate.queryForList(
+            "SELECT worker, result, created_at FROM analysis_results " +
+            "WHERE symbol = ? ORDER BY created_at DESC LIMIT 10", symbol.toUpperCase());
+        return ResponseEntity.ok(results);
+    }
+}
+
+ΣΗΜΕΙΩΣΗ: το analysis_results table το δημιουργεί ο Python consumer αυτόματα.
+Ο JdbcTemplate υπάρχει ήδη αν έχεις spring-boot-starter-data-jpa.
