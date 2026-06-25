@@ -5,6 +5,12 @@ import json
 
 app = Flask(__name__)
 from prometheus_flask_exporter import PrometheusMetrics
+from quant_engine import full_analysis, load_price_series
+from macro_engine import correlation_analysis, institutional_signal
+from orderflow_engine import full_orderflow
+from ohlc_engine import full_ohlc_analysis
+import pandas as pd
+
 metrics = PrometheusMetrics(app)
 
 def compute_rsi(series: pd.Series, period: int = 14) -> pd.Series:
@@ -341,6 +347,34 @@ def volume_profile_endpoint():
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({"status": "UP", "service": "quant_worker", "port": 8003})
+
+
+
+@app.route("/analyze-full", methods=["POST"])
+def analyze_full():
+    data = request.json or {}
+    prices = data.get("prices", [])
+    if not prices:
+        return jsonify({"error": "no prices provided"}), 400
+    df = pd.DataFrame({"date": range(len(prices)), "close": prices})
+    return jsonify(full_analysis(df))
+
+
+@app.route("/macro/<symbol>", methods=["GET"])
+def macro(symbol):
+    return jsonify({"correlations": correlation_analysis(symbol),
+                    "signal": institutional_signal(symbol)})
+
+
+@app.route("/orderflow/<symbol>", methods=["GET"])
+def orderflow(symbol):
+    return jsonify(full_orderflow(symbol))
+
+
+@app.route("/ohlc/<symbol>", methods=["GET"])
+def ohlc(symbol):
+    return jsonify(full_ohlc_analysis(symbol))
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8003, debug=False, use_reloader=False)

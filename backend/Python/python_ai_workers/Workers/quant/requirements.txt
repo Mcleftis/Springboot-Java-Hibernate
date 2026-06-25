@@ -1,4 +1,9 @@
 flask
-pandas
 numpy
+pandas
+scipy
+statsmodels
+arch
+yfinance
+requests
 prometheus-flask-exporter==0.23.0
