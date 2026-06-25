@@ -1,0 +1,60 @@
+JAVA ENTITY ΑΛΛΑΓΕΣ ΓΙΑ FOREIGN KEY
+
+Στο AnalysisResult.java, αντικατεστησε την υπαρχουσα συνδεση
+και προσθεσε relationship προς το MarketData.
+
+------------------------------------------------------------
+ΠΡΟΣΘΕΣΕ στο AnalysisResult.java (μεσα στην κλαση):
+------------------------------------------------------------
+
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "market_data_id")
+private MarketData marketData;
+
+------------------------------------------------------------
+ΠΡΟΣΘΕΣΕ στα imports:
+------------------------------------------------------------
+
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.FetchType;
+
+------------------------------------------------------------
+ΠΡΟΣΘΕΣΕ getter/setter:
+------------------------------------------------------------
+
+public MarketData getMarketData() {
+    return marketData;
+}
+
+public void setMarketData(MarketData marketData) {
+    this.marketData = marketData;
+}
+
+------------------------------------------------------------
+ΠΡΟΣΘΕΣΕ στο MarketData.java unique constraint:
+------------------------------------------------------------
+
+Αλλαξε το @Table annotation σε:
+
+@Table(name = "market_data",
+       uniqueConstraints = @UniqueConstraint(columnNames = {"symbol", "date"}),
+       indexes = @Index(name = "idx_symbol_date", columnList = "symbol,date"))
+
+και προσθεσε imports:
+
+import jakarta.persistence.UniqueConstraint;
+import jakarta.persistence.Index;
+
+------------------------------------------------------------
+ΣΗΜΕΙΩΣΗ
+------------------------------------------------------------
+Αν spring.jpa.hibernate.ddl-auto=update, το Hibernate θα προσπαθησει
+να δημιουργησει το FK μονο του απο τα annotations. Ομως για υπαρχοντα
+δεδομενα με ασυμβατοτητες, τρεξε ΠΡΩΤΑ το add_foreign_keys.sql χειροκινητα,
+γιατι το Hibernate δεν κανει data backfill (το UPDATE βημα).
+
+Σειρα:
+1. kubectl exec στο postgres pod
+2. τρεξε το add_foreign_keys.sql
+3. μετα deploy το νεο Java image με τα annotations
